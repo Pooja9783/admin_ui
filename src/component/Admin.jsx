@@ -1,12 +1,23 @@
 import React from "react";
 import { useState, useEffect } from "react";
+import ReactPaginate from "react-paginate";
+
 import "../App.css";
 const axios = require("axios");
 
 export default function Admin() {
+  const [loading, setLoading] = useState(false);
   const [value, setValue] = useState([]);
-  const [search, setSearch] = useState([]);
+  const [search, setSearch] = useState("");
+  const [pageNumber, setPageNumber] = useState(0);
+  const usersPerPage = 10;
+  const pagesVisited = pageNumber * usersPerPage;
+  const pageCount = Math.ceil(value.length / usersPerPage);
+  const changePage = ({ selected }) => {
+    setPageNumber(selected);
+  };
   useEffect(() => {
+    setLoading(true);
     axios
       .get(
         "https://geektrust.s3-ap-southeast-1.amazonaws.com/adminui-problem/members.json"
@@ -14,9 +25,16 @@ export default function Admin() {
       .then((res) => {
         console.log(res);
         setValue(res.data);
+        setLoading(false);
       })
       .catch((err) => console.log(err));
   }, []);
+
+  //~~~~~~~~~~~Delete Data~~~~~~~~~~~~~~~~~~
+  const deleteHandle = (name) => {
+    const newList = value.filter((item) => item.name !== name);
+    setValue([...newList]);
+  };
 
   return (
     <div className="container my-3">
@@ -24,6 +42,9 @@ export default function Admin() {
         className="form-control"
         placeholder="Search by Name, Email and Role...."
         value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+        }}
       />
       <table className="table">
         <thead>
@@ -43,29 +64,55 @@ export default function Admin() {
           </tr>
         </thead>
         <tbody>
-          {value.map((e, i) => {
-            return (
-              <tr key={i}>
-                <td>
-                  {" "}
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    value=""
-                    aria-label="Checkbox for following text input"
-                  />
-                </td>
+          {loading ? (
+            <h1>Loading...</h1>
+          ) : (
+            value
+              .filter((val) => {
+                if (search === "") {
+                  return val;
+                } else if (
+                  val.name.toLowerCase().includes(search.toLowerCase())
+                ) {
+                  return val.name;
+                } else if (
+                  val.email.toLowerCase().includes(search.toLowerCase())
+                ) {
+                  return val.email;
+                } else if (
+                  val.role.toLowerCase().includes(search.toLowerCase())
+                ) {
+                  return val.role;
+                }
+              })
+              .slice(pagesVisited, pagesVisited + usersPerPage)
+              .map((e, i) => {
+                return (
+                  <tr key={i}>
+                    <td>
+                      {" "}
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        value=""
+                        aria-label="Checkbox for following text input"
+                      />
+                    </td>
 
-                <td>{e.name}</td>
-                <td>{e.email}</td>
-                <td>{e.role}</td>
-                <td className="icon-margin">
-                  <i className="bi bi-pencil-square"></i>
-                  <i className="bi bi-archive "></i>
-                </td>
-              </tr>
-            );
-          })}
+                    <td>{e.name}</td>
+                    <td>{e.email}</td>
+                    <td>{e.role}</td>
+                    <td className="icon-margin">
+                      <i className="bi bi-pencil-square"></i>
+                      <i
+                        className="bi bi-archive  "
+                        onClick={() => deleteHandle(e.name)}
+                      ></i>
+                    </td>
+                  </tr>
+                );
+              })
+          )}
         </tbody>
       </table>
 
@@ -73,36 +120,17 @@ export default function Admin() {
         <button type="button" className="btn btn-danger">
           Delete Selected
         </button>
-
-        <nav aria-label="Page navigation example">
-          <ul className="pagination">
-            <li className="page-item">
-              <a className="page-link" href="#" aria-label="Previous">
-                <span aria-hidden="true">&laquo;</span>
-              </a>
-            </li>
-            <li className="page-item">
-              <a className="page-link" href="#">
-                1
-              </a>
-            </li>
-            <li className="page-item">
-              <a className="page-link" href="#">
-                2
-              </a>
-            </li>
-            <li className="page-item">
-              <a className="page-link" href="#">
-                3
-              </a>
-            </li>
-            <li className="page-item">
-              <a className="page-link" href="#" aria-label="Next">
-                <span aria-hidden="true">&raquo;</span>
-              </a>
-            </li>
-          </ul>
-        </nav>
+        <div className="page-flex">
+          <ReactPaginate
+            previousLabel={"<"}
+            nextLabel={">"}
+            pageCount={pageCount}
+            onPageChange={changePage}
+            containerClassName={"paginationBttns"}
+            disabledClassName={"paginationDisabled"}
+            activeClassName={"paginationActive"}
+          />
+        </div>
       </div>
     </div>
   );
